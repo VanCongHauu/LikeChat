@@ -8,4 +8,5 @@ public:
 
 private:
     LikeChatConnection connection;
+    SOCKET clientSocket;
 };

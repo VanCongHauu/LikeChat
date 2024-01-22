@@ -11,4 +11,5 @@ public:
 private:
     std::string username;
     LikeChatConnection connection;
+    SOCKET clientSocket;
 };

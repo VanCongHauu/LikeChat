@@ -13,13 +13,13 @@ LikeChatConnection::LikeChatConnection() {
 LikeChatConnection::~LikeChatConnection() {
     for (std::thread& thread : clientThreads) {
         if (thread.joinable()) {
-            thread.join();  // Chắc chắn tất cả các thread con đã kết thúc trước khi thoát
+            thread.join();  // Make sure all child threads have finished before exiting
         }
     }
     WSACleanup();
 }
 
-void LikeChatConnection::startServer() {
+void LikeChatConnection::startServer(const std::string& username) {
     serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == INVALID_SOCKET) {
         std::cerr << "Failed to create server socket. Error: " << WSAGetLastError() << std::endl;
@@ -49,7 +49,7 @@ void LikeChatConnection::startServer() {
     std::cout << "Server is listening for connections..." << std::endl;
 
     while (true) {
-        // Chấp nhận kết nối từ client mới
+        // Accept connections from new clients
         SOCKET clientSocket = accept(serverSocket, NULL, NULL);
         if (clientSocket == INVALID_SOCKET) {
             std::cerr << "Failed to accept client connection. Error: " << WSAGetLastError() << std::endl;
@@ -58,16 +58,16 @@ void LikeChatConnection::startServer() {
             exit(EXIT_FAILURE);
         }
 
-        // Thực hiện xác thực cho client
+        // Perform authentication for the client
         if (authenticateClient(clientSocket)) {
-            // Thêm clientSocket và username vào danh sách
+            // Add clientSocket and username to the list
             clientSockets.push_back(clientSocket);
             std::cout << "New client connected." << std::endl;
 
-            // Bắt đầu một thread mới để xử lý kết nối của client
-            clientThreads.emplace_back(&LikeChatConnection::handleCommunication, this, clientSocket, username);
+            // Start a new thread to handle the client's connection
+            clientThreads.emplace_back(&LikeChatConnection::handleCommunication, this, clientSocket);
         } else {
-            // Đóng kết nối nếu xác thực thất bại
+            // Close the connection if authentication fails
             std::cerr << "Authentication failed. Closing connection." << std::endl;
             closesocket(clientSocket);
         }
@@ -91,9 +91,9 @@ bool LikeChatConnection::authenticateClient(SOCKET clientSocket) {
     buffer[bytesRead] = '\0';
     std::string username(buffer);
 
-    // Kiểm tra xác thực (đơn giản, bạn có thể thay thế bằng phương thức an toàn hơn)
+    // Verify authentication
     if (username == "valid_username") {
-        // Gửi xác nhận đăng nhập thành công
+        // Send a confirmation of successful login
         const char* successMessage = "Authentication successful. Welcome!";
         if (send(clientSocket, successMessage, strlen(successMessage), 0) == SOCKET_ERROR) 
         {
@@ -101,12 +101,12 @@ bool LikeChatConnection::authenticateClient(SOCKET clientSocket) {
             closesocket(clientSocket);
             return false;
         }
-        // Thêm username vào danh sách
+        // Add the username to the list
         clientUsernames.push_back(username);
 
         return true;
     } else {
-        // Gửi thông báo lỗi đăng nhập
+        // Send a login error message
         std::cerr << "Authentication failed for user: " << username << std::endl;
         const char* errorMessage = "Authentication failed. Invalid username.";
         if (send(clientSocket, errorMessage, strlen(errorMessage), 0) == SOCKET_ERROR)
@@ -116,13 +116,14 @@ bool LikeChatConnection::authenticateClient(SOCKET clientSocket) {
             return false;
         }
     }
+    return false;
 }
 
-void LikeChatConnection::handleCommunication(SOCKET clientSocket, const std::string& username) {
+void LikeChatConnection::handleCommunication(SOCKET clientSocket) {
     char buffer[1024];
 
     while (true) {
-        // Nhận dữ liệu từ client hoặc server
+        // Receive data from the client or server
         int bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
         if (bytesRead <= 0) {
             if (bytesRead == 0) {
@@ -130,21 +131,20 @@ void LikeChatConnection::handleCommunication(SOCKET clientSocket, const std::str
             } else {
                 std::cerr << "Error receiving data from client. Error: " << WSAGetLastError() << std::endl;
             }
-            // Xóa clientSocket và username khỏi danh sách nếu client đã ngắt kết nối
+            // Remove clientSocket and username from the list if the client has disconnected
             size_t index = &clientSocket - &clientSockets[0];
             clientSockets.erase(clientSockets.begin() + index);
             clientUsernames.erase(clientUsernames.begin() + index);
             closesocket(clientSocket);
-            break;  // Kết thúc thread khi client disconnects
+            break;  // End the thread when the client disconnects
         }
 
-        // Hiển thị dữ liệu nhận được
+        // Display the received data
         buffer[bytesRead] = '\0';
         ChatMessage receivedMessage = ChatMessage::deserialize(buffer);
         std::cout << "[" << receivedMessage.serialize() << "]: " << receivedMessage.getContent() << std::endl;
-        // std::cout << "[" << clientUsernames[&clientSocket - &clientSockets[0]] << "]: " << buffer << std::endl;
 
-        // Gửi dữ liệu từ client hoặc server
+        // Send data from the client or server
         std::cout << "Enter message: ";
         std::string inputMessage;
         std::getline(std::cin, inputMessage);
@@ -154,16 +154,15 @@ void LikeChatConnection::handleCommunication(SOCKET clientSocket, const std::str
 
         if (send(clientSocket, chatMessage.serialize().c_str(), chatMessage.serialize().length(), 0) == SOCKET_ERROR) {
             std::cerr << "Error sending data to client. Error: " << WSAGetLastError() << std::endl;
-            // Xóa clientSocket và username khỏi danh sách nếu client đã ngắt kết nối
+            // Remove clientSocket and username from the list if the client has disconnected
             size_t index = &clientSocket - &clientSockets[0];
             clientSockets.erase(clientSockets.begin() + index);
             clientUsernames.erase(clientUsernames.begin() + index);
             closesocket(clientSocket);
-            break;  // Kết thúc thread khi client disconnects
+            break;  // End the thread when the client disconnects
         }
     }
 
-    // Đóng socket khi kết thúc
     closesocket(clientSocket);
 }
 

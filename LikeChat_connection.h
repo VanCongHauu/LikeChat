@@ -10,11 +10,9 @@ class LikeChatConnection {
 public:
     LikeChatConnection();
     ~LikeChatConnection();
-    void startServer();
-    void connectToServer(const std::string& username);
+    void startServer(const std::string& username);
     bool authenticateClient(SOCKET clientSocket);
-    void handleCommunication(SOCKET clientSocket, const std::string &username);
-    // void handleCommunication(SOCKET clientSocket);
+    void handleCommunication(SOCKET clientSocket);
     void sendMessage(SOCKET clientSocket, const ChatMessage& message);
 
 private:

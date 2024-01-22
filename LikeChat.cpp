@@ -3,7 +3,7 @@
 #include <iostream>
 
 int main() {
-    // Get user information for login (you need to implement this part)
+    // Get user information for login
     std::string username;
     std::cout << "Enter your username: ";
     std::cin >> username;

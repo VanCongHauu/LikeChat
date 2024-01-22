@@ -1,13 +1,13 @@
 #include "LikeChat_client.h"
 
-LikeChatClient::LikeChatClient(const std::string& _username) : username(_username) {
+LikeChatClient::LikeChatClient(const std::string& _username) : username(_username), clientSocket(INVALID_SOCKET) {
     // Initialize any client-specific setup here
 }
 
 void LikeChatClient::connectToServer() {
-    connection.connectToServer(username);
+    connection.startServer(username);
 }
 
 void LikeChatClient::handleCommunication() {
-    connection.handleCommunication();
+    connection.handleCommunication(clientSocket);
 }
