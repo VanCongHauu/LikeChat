@@ -1,14 +1,10 @@
 #include "LikeChat_connection.h"
 #include <iostream>
 #include "LikeChat_client.h"
+#include <cstring>
+#include <unistd.h>
+#include <sys/socket.h>
 
-LikeChatConnection::LikeChatConnection() {
-    WSADATA wsData;
-    if (WSAStartup(MAKEWORD(2, 2), &wsData) != 0) {
-        std::cerr << "Failed to initialize Winsock. Error: " << WSAGetLastError() << std::endl;
-        exit(EXIT_FAILURE);
-    }
-}
 
 LikeChatConnection::~LikeChatConnection() {
     for (std::thread& thread : clientThreads) {
@@ -16,33 +12,30 @@ LikeChatConnection::~LikeChatConnection() {
             thread.join();  // Make sure all child threads have finished before exiting
         }
     }
-    WSACleanup();
 }
 
 void LikeChatConnection::startServer(const std::string& username) {
-    serverSocket = socket(AF_INET, SOCK_STREAM, 0);
-    if (serverSocket == INVALID_SOCKET) {
-        std::cerr << "Failed to create server socket. Error: " << WSAGetLastError() << std::endl;
-        WSACleanup();
+    int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (serverSocket == -1) {
+        std::cerr << "Failed to create server socket. Error: " << strerror(errno) << std::endl;
         exit(EXIT_FAILURE);
     }
 
     sockaddr_in serverAddr;
+    std::memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
     serverAddr.sin_port = htons(12345);
 
-    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == SOCKET_ERROR) {
-        std::cerr << "Failed to bind server socket. Error: " << WSAGetLastError() << std::endl;
-        closesocket(serverSocket);
-        WSACleanup();
+    if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        std::cerr << "Failed to bind server socket. Error: " << strerror(errno) << std::endl;
+        close(serverSocket);
         exit(EXIT_FAILURE);
     }
 
-    if (listen(serverSocket, SOMAXCONN) == SOCKET_ERROR) {
-    std::cerr << "Failed to listen for connections. Error: " << WSAGetLastError() << std::endl;
-    closesocket(serverSocket);
-    WSACleanup();
+    if (listen(serverSocket, SOMAXCONN) == -1) {
+    std::cerr << "Failed to listen for connections. Error: " << strerror(errno) << std::endl;
+    close(serverSocket);
     exit(EXIT_FAILURE);
     }
 
@@ -50,11 +43,10 @@ void LikeChatConnection::startServer(const std::string& username) {
 
     while (true) {
         // Accept connections from new clients
-        SOCKET clientSocket = accept(serverSocket, NULL, NULL);
-        if (clientSocket == INVALID_SOCKET) {
-            std::cerr << "Failed to accept client connection. Error: " << WSAGetLastError() << std::endl;
-            closesocket(serverSocket);
-            WSACleanup();
+        int clientSocket = accept(serverSocket, NULL, NULL);
+        if (clientSocket == -1) {
+            std::cerr << "Failed to accept client connection. Error: " << strerror(errno) << std::endl;
+            close(serverSocket);
             exit(EXIT_FAILURE);
         }
 
@@ -69,12 +61,12 @@ void LikeChatConnection::startServer(const std::string& username) {
         } else {
             // Close the connection if authentication fails
             std::cerr << "Authentication failed. Closing connection." << std::endl;
-            closesocket(clientSocket);
+            close(clientSocket);
         }
     }
 }
 
-bool LikeChatConnection::authenticateClient(SOCKET clientSocket) {
+bool LikeChatConnection::authenticateClient(int clientSocket) {
     char buffer[1024];
     int bytesRead = recv(clientSocket, buffer, sizeof(buffer), 0);
     if (bytesRead <= 0) {
@@ -82,9 +74,9 @@ bool LikeChatConnection::authenticateClient(SOCKET clientSocket) {
             std::cerr << "Client disconnected gracefully." << std::endl;
         } 
         else {
-            std::cerr << "Error receiving data from client. Error: " << WSAGetLastError() << std::endl;
+            std::cerr << "Error receiving data from client. Error: " << strerror(errno) << std::endl;
         }
-        closesocket(clientSocket);
+        close(clientSocket);
         return false;
     }
 
@@ -95,10 +87,10 @@ bool LikeChatConnection::authenticateClient(SOCKET clientSocket) {
     if (username == "valid_username") {
         // Send a confirmation of successful login
         const char* successMessage = "Authentication successful. Welcome!";
-        if (send(clientSocket, successMessage, strlen(successMessage), 0) == SOCKET_ERROR) 
+        if (send(clientSocket, successMessage, strlen(successMessage), 0) == -1) 
         {
-            std::cerr << "Error sending data to client. Error: " << WSAGetLastError() << std::endl;
-            closesocket(clientSocket);
+            std::cerr << "Error sending data to client. Error: " << strerror(errno) << std::endl;
+            close(clientSocket);
             return false;
         }
         // Add the username to the list
@@ -109,17 +101,17 @@ bool LikeChatConnection::authenticateClient(SOCKET clientSocket) {
         // Send a login error message
         std::cerr << "Authentication failed for user: " << username << std::endl;
         const char* errorMessage = "Authentication failed. Invalid username.";
-        if (send(clientSocket, errorMessage, strlen(errorMessage), 0) == SOCKET_ERROR)
+        if (send(clientSocket, errorMessage, strlen(errorMessage), 0) == -1)
         {
-            std::cerr << "Error sending data to client. Error: " << WSAGetLastError() << std::endl;
-            closesocket(clientSocket);
+            std::cerr << "Error sending data to client. Error: " << strerror(errno) << std::endl;
+            close(clientSocket);
             return false;
         }
     }
     return false;
 }
 
-void LikeChatConnection::handleCommunication(SOCKET clientSocket) {
+void LikeChatConnection::handleCommunication(int clientSocket) {
     char buffer[1024];
 
     while (true) {
@@ -129,13 +121,13 @@ void LikeChatConnection::handleCommunication(SOCKET clientSocket) {
             if (bytesRead == 0) {
                 std::cerr << "Client disconnected gracefully." << std::endl;
             } else {
-                std::cerr << "Error receiving data from client. Error: " << WSAGetLastError() << std::endl;
+                std::cerr << "Error receiving data from client. Error: " << strerror(errno) << std::endl;
             }
             // Remove clientSocket and username from the list if the client has disconnected
             size_t index = &clientSocket - &clientSockets[0];
             clientSockets.erase(clientSockets.begin() + index);
             clientUsernames.erase(clientUsernames.begin() + index);
-            closesocket(clientSocket);
+            close(clientSocket);
             break;  // End the thread when the client disconnects
         }
 
@@ -152,21 +144,21 @@ void LikeChatConnection::handleCommunication(SOCKET clientSocket) {
         ChatMessage chatMessage(username, inputMessage);
         sendMessage(clientSocket, chatMessage);
 
-        if (send(clientSocket, chatMessage.serialize().c_str(), chatMessage.serialize().length(), 0) == SOCKET_ERROR) {
-            std::cerr << "Error sending data to client. Error: " << WSAGetLastError() << std::endl;
+        if (send(clientSocket, chatMessage.serialize().c_str(), chatMessage.serialize().length(), 0) == -1) {
+            std::cerr << "Error sending data to client. Error: " << strerror(errno) << std::endl;
             // Remove clientSocket and username from the list if the client has disconnected
             size_t index = &clientSocket - &clientSockets[0];
             clientSockets.erase(clientSockets.begin() + index);
             clientUsernames.erase(clientUsernames.begin() + index);
-            closesocket(clientSocket);
+            close(clientSocket);
             break;  // End the thread when the client disconnects
         }
     }
 
-    closesocket(clientSocket);
+    close(clientSocket);
 }
 
-void LikeChatConnection::sendMessage(SOCKET clientSocket, const ChatMessage& message) {
+void LikeChatConnection::sendMessage(int clientSocket, const ChatMessage& message) {
     std::string serializedMessage = message.serialize();
     send(clientSocket, serializedMessage.c_str(), serializedMessage.length(), 0);
 }

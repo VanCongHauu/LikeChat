@@ -1,12 +1,15 @@
 #include "ChatMessage.h"
 #include <sstream>
+#include <iomanip>
 
 ChatMessage::ChatMessage(const std::string& sender, const std::string& content)
-    : sender(sender), content(content), timestamp(std::time(nullptr)) {}
+    : sender(sender), content(content) {
+    timestamp = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+}
 
 std::string ChatMessage::serialize() const {
     std::ostringstream oss;
-    oss << timestamp << "|" << sender << "|" << content;
+    oss << std::put_time(std::localtime(&timestamp), "%Y-%m-%d %H:%M:%S") << "|" << sender << "|" << content;
     return oss.str();
 }
 
@@ -18,6 +21,8 @@ ChatMessage ChatMessage::deserialize(const std::string& serializedMessage) {
     std::getline(iss, content, '|');
 
     ChatMessage message(sender, content);
-    message.timestamp = std::stoll(timestampStr);
+    std::istringstream timestampIss(timestampStr);
+    timestampIss >> std::get_time(std::localtime(&message.timestamp), "%Y-%m-%d %H:%M:%S");
+
     return message;
 }

@@ -1,7 +1,9 @@
-#pragma once
+#ifndef LIKECHAT_CONNECTION_H
+#define LIKECHAT_CONNECTION_H
+
 #include <string>
 #include <vector>
-#include <WinSock2.h>
+// #include <netinet/in.h>
 #include <thread>
 #include <mutex>
 #include "ChatMessage.h"
@@ -11,15 +13,16 @@ public:
     LikeChatConnection();
     ~LikeChatConnection();
     void startServer(const std::string& username);
-    bool authenticateClient(SOCKET clientSocket);
-    void handleCommunication(SOCKET clientSocket);
-    void sendMessage(SOCKET clientSocket, const ChatMessage& message);
+    bool authenticateClient(int clientSocket);
+    void handleCommunication(int clientSocket);
+    void sendMessage(int clientSocket, const ChatMessage& message);
 
 private:
-    SOCKET serverSocket;
+    int clientSocket;
     std::vector<std::thread> clientThreads;
-    std::vector<SOCKET> clientSockets;
+    std::vector<int> clientSockets;
     std::vector<std::string> clientUsernames;
     std::mutex clientMutex;
     std::string username;
 };
+#endif
