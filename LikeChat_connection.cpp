@@ -1,10 +1,18 @@
-#include "LikeChat_connection.h"
 #include <iostream>
 #include "LikeChat_client.h"
 #include <cstring>
 #include <unistd.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#pragma comment(lib, "ws2_32.lib")
+#else
 #include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#endif
 
+
+LikeChatConnection::LikeChatConnection() : serverSocket(-1) {}
 
 LikeChatConnection::~LikeChatConnection() {
     for (std::thread& thread : clientThreads) {
@@ -14,7 +22,7 @@ LikeChatConnection::~LikeChatConnection() {
     }
 }
 
-void LikeChatConnection::startServer(const std::string& username) {
+void LikeChatConnection::startServer() {
     int serverSocket = socket(AF_INET, SOCK_STREAM, 0);
     if (serverSocket == -1) {
         std::cerr << "Failed to create server socket. Error: " << strerror(errno) << std::endl;
@@ -63,6 +71,37 @@ void LikeChatConnection::startServer(const std::string& username) {
             std::cerr << "Authentication failed. Closing connection." << std::endl;
             close(clientSocket);
         }
+    }
+}
+
+int LikeChatConnection::connectToServer(const std::string& username) {
+    int clientSocket = socket(AF_INET, SOCK_STREAM, 0);
+    if (clientSocket == -1) {
+        std::cerr << "Failed to create client socket. Error: " << strerror(errno) << std::endl;
+        exit(EXIT_FAILURE);
+    }
+
+    sockaddr_in serverAddr;
+    std::memset(&serverAddr, 0, sizeof(serverAddr));
+    serverAddr.sin_family = AF_INET;
+    serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
+    serverAddr.sin_port = htons(12345);
+
+    if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
+        std::cerr << "Failed to connect to server. Error: " << strerror(errno) << std::endl;
+        close(clientSocket);
+        exit(EXIT_FAILURE);
+    }
+
+    // Perform authentication for the client
+    if (authenticateClient(clientSocket)) {
+        std::cout << "Connected to the server." << std::endl;
+        return clientSocket;
+    } else {
+        // Close the connection if authentication fails
+        std::cerr << "Authentication failed. Closing connection." << std::endl;
+        close(clientSocket);
+        return -1;
     }
 }
 

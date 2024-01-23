@@ -10,6 +10,5 @@ public:
 
 private:
     LikeChatConnection connection;
-    int clientSocket;
 };
 #endif

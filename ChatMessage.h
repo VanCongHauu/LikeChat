@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CHAT_MESSAGE_H
+#define CHAT_MESSAGE_H
+
 #include <string>
 #include <ctime>
 
@@ -16,3 +18,4 @@ private:
     std::string content;
     std::time_t timestamp;
 };
+#endif
