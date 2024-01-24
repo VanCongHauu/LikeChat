@@ -33,7 +33,7 @@ void LikeChatConnection::startServer() {
     std::memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = INADDR_ANY;
-    serverAddr.sin_port = htons(12345);
+    serverAddr.sin_port = htons(8888);
 
     if (bind(serverSocket, (sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         std::cerr << "Failed to bind server socket. Error: " << strerror(errno) << std::endl;
@@ -85,7 +85,7 @@ int LikeChatConnection::connectToServer(const std::string& username) {
     std::memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
-    serverAddr.sin_port = htons(12345);
+    serverAddr.sin_port = htons(8888);
 
     if (connect(clientSocket, (struct sockaddr*)&serverAddr, sizeof(serverAddr)) == -1) {
         std::cerr << "Failed to connect to server. Error: " << strerror(errno) << std::endl;
@@ -123,7 +123,7 @@ bool LikeChatConnection::authenticateClient(int clientSocket) {
     std::string username(buffer);
 
     // Verify authentication
-    if (username == "valid_username") {
+    if (username != "") {
         // Send a confirmation of successful login
         const char* successMessage = "Authentication successful. Welcome!";
         if (send(clientSocket, successMessage, strlen(successMessage), 0) == -1) 
