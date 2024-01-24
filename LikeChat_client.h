@@ -1,4 +1,6 @@
-#pragma once
+#ifndef LIKECHAT_CLIENT_H
+#define LIKECHAT_CLIENT_H
+
 #include <string>
 #include "LikeChat_connection.h"
 
@@ -11,5 +13,6 @@ public:
 private:
     std::string username;
     LikeChatConnection connection;
-    SOCKET clientSocket;
+    int clientSocket;
 };
+#endif

@@ -1,4 +1,6 @@
-#pragma once
+#ifndef CHAT_MESSAGE_H
+#define CHAT_MESSAGE_H
+
 #include <string>
 #include <ctime>
 
@@ -10,9 +12,13 @@ public:
     std::string getContent() const {
         return content;
     }
+    std::string getSender() const {
+        return sender;
+    }
 
 private:
     std::string sender;
     std::string content;
     std::time_t timestamp;
 };
+#endif

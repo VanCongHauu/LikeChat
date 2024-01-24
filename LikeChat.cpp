@@ -1,6 +1,7 @@
 #include "LikeChat_server.h"
 #include "LikeChat_client.h"
 #include <iostream>
+#include <string>
 
 int main() {
     // Get user information for login
@@ -9,7 +10,7 @@ int main() {
     std::cin >> username;
 
     // Determine if it's a server or client based on user input
-    char userType;
+    char userType = '\0';
     std::cout << "Are you a server (s) or a client (c)? ";
     std::cin >> userType;
 

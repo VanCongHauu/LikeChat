@@ -1,4 +1,6 @@
-#pragma once
+#ifndef LIKECHAT_SERVER_H
+#define LIKECHAT_SERVER_H
+
 #include "LikeChat_connection.h"
 
 class LikeChatServer {
@@ -8,5 +10,5 @@ public:
 
 private:
     LikeChatConnection connection;
-    SOCKET clientSocket;
 };
+#endif

@@ -6,7 +6,5 @@ LikeChatServer::LikeChatServer() {
 }
 
 void LikeChatServer::startServer() {
-    std::string username;
-    connection.startServer(username);
-    connection.handleCommunication(clientSocket);
+    connection.startServer();
 }
