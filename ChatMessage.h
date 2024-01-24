@@ -12,6 +12,9 @@ public:
     std::string getContent() const {
         return content;
     }
+    std::string getSender() const {
+        return sender;
+    }
 
 private:
     std::string sender;

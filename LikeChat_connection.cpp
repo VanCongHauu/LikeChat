@@ -57,6 +57,7 @@ void LikeChatConnection::startServer() {
             close(serverSocket);
             exit(EXIT_FAILURE);
         }
+        std::cout << "Accepted a new client connection." << std::endl;
 
         // Perform authentication for the client
         if (authenticateClient(clientSocket)) {
@@ -93,16 +94,18 @@ int LikeChatConnection::connectToServer(const std::string& username) {
         exit(EXIT_FAILURE);
     }
 
-    // Perform authentication for the client
-    if (authenticateClient(clientSocket)) {
-        std::cout << "Connected to the server." << std::endl;
-        return clientSocket;
-    } else {
-        // Close the connection if authentication fails
-        std::cerr << "Authentication failed. Closing connection." << std::endl;
+    std::cout << "Connected to the server." << std::endl;
+    // Send the username to the server for authentication
+    if (send(clientSocket, username.c_str(), username.length(), 0) == -1) {
+        std::cerr << "Error sending username to the server." << std::endl;
         close(clientSocket);
-        return -1;
+        exit(EXIT_FAILURE);
     }
+    // Start a thread to handle communication with the server
+    std::thread communicationThread(&LikeChatConnection::handleCommunication, this, clientSocket);
+    communicationThread.detach(); // Detach the thread to run independently
+
+    return clientSocket;
 }
 
 bool LikeChatConnection::authenticateClient(int clientSocket) {
@@ -123,7 +126,7 @@ bool LikeChatConnection::authenticateClient(int clientSocket) {
     std::string username(buffer);
 
     // Verify authentication
-    if (username != "") {
+    if (username != " ") {
         // Send a confirmation of successful login
         const char* successMessage = "Authentication successful. Welcome!";
         if (send(clientSocket, successMessage, strlen(successMessage), 0) == -1) 
@@ -172,14 +175,28 @@ void LikeChatConnection::handleCommunication(int clientSocket) {
 
         // Display the received data
         buffer[bytesRead] = '\0';
-        ChatMessage receivedMessage = ChatMessage::deserialize(buffer);
-        std::cout << "[" << receivedMessage.serialize() << "]: " << receivedMessage.getContent() << std::endl;
+        std::string receivedData(buffer);
+
+        // Deserialize received data to ChatMessage
+        ChatMessage receivedMessage = ChatMessage::deserialize(receivedData);
+        
+        // Check if deserialization was successful
+        if (receivedMessage.getContent().empty()) {
+            std::cerr << "Failed to deserialize ChatMessage. Invalid data format." << std::endl;
+            break;  // Skip processing invalid data
+        }
+        std::cout << "[" << receivedMessage.serialize() << "]: " << receivedMessage.getSender() << ": " << receivedMessage.getContent() << std::endl;
 
         // Send data from the client or server
         std::cout << "Enter message: ";
         std::string inputMessage;
         std::getline(std::cin, inputMessage);
 
+        if (inputMessage.empty()) {
+            std::cerr << "Invalid input. Closing connection." << std::endl;
+            close(clientSocket);
+            break;  // End the thread on invalid input
+        }
         ChatMessage chatMessage(username, inputMessage);
         sendMessage(clientSocket, chatMessage);
 
@@ -193,7 +210,6 @@ void LikeChatConnection::handleCommunication(int clientSocket) {
             break;  // End the thread when the client disconnects
         }
     }
-
     close(clientSocket);
 }
 

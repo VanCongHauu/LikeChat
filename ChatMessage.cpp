@@ -10,20 +10,20 @@ ChatMessage::ChatMessage(const std::string& sender, const std::string& content)
 
 std::string ChatMessage::serialize() const {
     std::ostringstream oss;
-    oss << std::put_time(std::localtime(&timestamp), "%Y-%m-%d %H:%M:%S") << "|" << sender << "|" << content;
+    oss << sender << ": " << content;
     return oss.str();
 }
 
 ChatMessage ChatMessage::deserialize(const std::string& serializedMessage) {
     std::istringstream iss(serializedMessage);
-    std::string timestampStr, sender, content;
-    std::getline(iss, timestampStr, '|');
-    std::getline(iss, sender, '|');
-    std::getline(iss, content, '|');
+    std::string senderContent;
+    if (std::getline(iss, senderContent, '|')) {
+        std::string sender = senderContent.substr(0, senderContent.find_first_not_of(" "));
+        std::string content = senderContent.substr(senderContent.find_first_not_of(" "));
 
-    ChatMessage message(sender, content);
-    std::istringstream timestampIss(timestampStr);
-    timestampIss >> std::get_time(std::localtime(&message.timestamp), "%Y-%m-%d %H:%M:%S");
-
-    return message;
+        ChatMessage message(sender, content);
+        return message;
+    } else {
+        return ChatMessage("", "");
+    }
 }
