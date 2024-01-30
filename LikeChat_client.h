@@ -1,18 +1,18 @@
-#ifndef LIKECHAT_CLIENT_H
-#define LIKECHAT_CLIENT_H
-
-#include <string>
-#include "LikeChat_connection.h"
+#pragma once
+#include <iostream>
+#include <cstring>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <unistd.h>
 
 class LikeChatClient {
 public:
-    LikeChatClient(const std::string& username);
+    LikeChatClient();
+    ~LikeChatClient();
+
     void connectToServer();
     void handleCommunication();
 
 private:
-    std::string username;
-    LikeChatConnection connection;
     int clientSocket;
 };
-#endif

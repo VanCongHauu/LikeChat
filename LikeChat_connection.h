@@ -1,29 +1,18 @@
-#ifndef LIKECHAT_CONNECTION_H
-#define LIKECHAT_CONNECTION_H
-
-#include <string>
-#include <vector>
-#include <netinet/in.h>
-#include <thread>
-#include <mutex>
-#include "ChatMessage.h"
+// LikeChat_connection.h
+#pragma once
+#include "LikeChat_client.h"
+#include "LikeChat_server.h"
 
 class LikeChatConnection {
 public:
     LikeChatConnection();
     ~LikeChatConnection();
-    void startServer();
-    int connectToServer(const std::string& username);
-    bool authenticateClient(int clientSocket);
-    void handleCommunication(int clientSocket);
-    void sendMessage(int clientSocket, const ChatMessage& message);
+    LikeChatConnection(LikeChatServer* server);
+    LikeChatConnection(LikeChatClient* client);
+
+    void run();
 
 private:
-    int serverSocket;
-    std::vector<std::thread> clientThreads;
-    std::vector<int> clientSockets;
-    std::vector<std::string> clientUsernames;
-    std::mutex clientMutex;
-    std::string username;
+    LikeChatClient* client;
+    LikeChatServer* server;
 };
-#endif

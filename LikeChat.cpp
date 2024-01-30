@@ -1,5 +1,5 @@
-#include "LikeChat_server.h"
-#include "LikeChat_client.h"
+// LikeChat.cpp
+#include "LikeChat_connection.h"
 #include <iostream>
 #include <string>
 
@@ -14,16 +14,22 @@ int main() {
     std::cout << "Are you a server (s) or a client (c)? ";
     std::cin >> userType;
 
+    LikeChatConnection connection;
+
     if (userType == 's') {
-        LikeChatServer server;
-        server.startServer();
+        // If server, create the server instance and pass it by pointer
+        LikeChatServer* server = new LikeChatServer();
+        connection = LikeChatConnection(server);
     } else if (userType == 'c') {
-        LikeChatClient client(username);
-        client.connectToServer();
-        client.handleCommunication();
+        // If client, create the client instance and pass it by pointer
+        LikeChatClient* client = new LikeChatClient(username);
+        connection = LikeChatConnection(client);
     } else {
         std::cerr << "Invalid choice. Please enter 's' for server or 'c' for client." << std::endl;
+        return 1;  // Exit with an error code
     }
+
+    connection.run();
 
     return 0;
 }
